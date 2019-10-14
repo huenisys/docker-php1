@@ -3,12 +3,16 @@ version: '3'
 networks:
   laravel:
 
+volumes:
+  mysqldata:
+    driver: local
+
 services:
   nginx:
     image: nginx:stable-alpine
     container_name: nginx
     ports:
-      - '8080:80'
+      - '${APP_PORT}:80'
     volumes:
       - ./src:/var/www
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
@@ -22,8 +26,10 @@ services:
     container_name: mysql
     restart: unless-stopped
     tty: true
+    volumes:
+      - mysqldata:/var/lib/mysql
     ports:
-      - '3306:3306'
+      - '${DB_PORT}:3306'
     environment:
       MYSQL_DATABASE: laravel
       MYSQL_USER: laravel
@@ -44,3 +50,16 @@ services:
       - '9000:9000'
     networks:
       - laravel
+  logger:
+    image: gliderlabs/logspout:latest
+    container_name: logger
+    ports:
+      - '5000:5000'
+    networks:
+      - laravel
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command:
+      - 'syslog+tls://${PT_URL}:${PT_PORT}?filter.name=*nginx*'
+    environment:
+      SYSLOG_FORMAT: rfc5424
